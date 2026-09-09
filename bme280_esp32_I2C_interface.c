@@ -53,7 +53,7 @@ static void ESP32_DelayMs(uint16_t ms)
 
 
 // Zmieniamy argumenty: przyjmujemy główną strukturę i adres I2C
-void BME280_ESP32_I2C_Interface_Init(BME280_Device_t *Device, ESP32_I2C_Config_t *Config) 
+I2C_ESP32_Error_t BME280_ESP32_I2C_Interface_Init(BME280_Device_t *Device, ESP32_I2C_Config_t *Config) 
 {
     if (Device != NULL && Config != NULL) 
     {
@@ -61,5 +61,7 @@ void BME280_ESP32_I2C_Interface_Init(BME280_Device_t *Device, ESP32_I2C_Config_t
         Device->driver.ReadReg  = ESP32_I2C_ReadReg;
         Device->driver.WriteReg = ESP32_I2C_WriteReg;
         Device->driver.DelayMs  = ESP32_DelayMs;
+        return I2C_ESP32_OK; // Return success
     }
+    return I2C_ESP32_NULL_PTR; // Return NULL pointer error if Device or Config is NULL
 }

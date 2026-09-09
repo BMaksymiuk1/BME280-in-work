@@ -42,7 +42,8 @@ typedef struct {
     CalibrationData_t CalibrationData; // Unique calibration data for the sensor
     int32_t t_fine;       
     // Pointer to a user-defined structure containing for I2C port number and address, for SPI port handle and chip select pin         // Computed temperature value
-    void *InterfacePtr;         
+    void *InterfacePtr;   
+    uint8_t DeviceId; // 0 for I2C, 1 for SPI      
 } BME280_Device_t;
 
 //structure to hold the compensated output data
@@ -53,23 +54,38 @@ typedef struct {
 }OutputData_t;
 
 typedef enum {
-    BME280_OK              = 0,
-    BME280_NULL_PTR      = -1,
-    BME280_COMM_FAIL     = -2, // Błąd komunikacji I2C/SPI
-    BME280_DEV_NOT_FOUND = -3,  // Złe ID czujnika
-    BME280_INVALID_ID = -4 // Invalid sensor ID
+    BME280_OK = 0, 
+    BME280_NULL_PTR = -1, // Null pointer error
+    BME280_COMM_FAIL = -2, // Communication Failure (I2C/SPI read/write error)
+    BME280_INVALID_ID = -3, // Invalid sensor ID
+    BME280_INVALID_PARAM = -4 // Invalid parameter passed to function
 } BME280_Status_t;
 
+typedef enum {
+    BME280_SLEEP_MODE = 0,
+    BME280_FORCED_MODE = 1,
+    BME280_NORMAL_MODE = 3
+} BME280_Mode_t;
 
-BME280_Status_t TemperatureOversamplingSet(BME280_Device_t *Device, uint8_t osrs_t);
-BME280_Status_t PressureOversamplingSet(BME280_Device_t *Device, uint8_t osrs_p);
-BME280_Status_t ModeSet(BME280_Device_t *Device, uint8_t Mode);
-BME280_Status_t HumidityOversamplingSet(BME280_Device_t *Device, uint8_t osrs_h);
+typedef enum {
+    OSRS_SKIP = 0,
+    OSRS_1X   = 1,
+    OSRS_2X   = 2,
+    OSRS_4X   = 3,
+    OSRS_8X   = 4,
+    OSRS_16X  = 5
+} BME280_Oversampling_t;
+
+
+BME280_Status_t TemperatureOversamplingSet(BME280_Device_t *Device, BME280_Oversampling_t osrs_t);
+BME280_Status_t PressureOversamplingSet(BME280_Device_t *Device, BME280_Oversampling_t osrs_p);
+BME280_Status_t ModeSet(BME280_Device_t *Device, BME280_Mode_t Mode);
+BME280_Status_t HumidityOversamplingSet(BME280_Device_t *Device, BME280_Oversampling_t osrs_h);
 BME280_Status_t StandbyTimeSet(BME280_Device_t *Device, uint8_t t_sb);
 BME280_Status_t FilterSet(BME280_Device_t *Device, uint8_t filter);
 BME280_Status_t SPI3WireEnable(BME280_Device_t *Device, uint8_t spi3w_en);
 BME280_Status_t SoftReset(BME280_Device_t *Device);
-uint8_t IdRead(BME280_Device_t *Device);
+BME280_Status_t IdRead(BME280_Device_t *Device);
 BME280_Status_t ReadCalibrationData(BME280_Device_t *Device);
 uint8_t AreDataRegistersUpdated(BME280_Device_t *Device);
 uint8_t IsInUpdate(BME280_Device_t *Device);

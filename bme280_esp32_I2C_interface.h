@@ -10,8 +10,13 @@ typedef struct {
     uint8_t I2C_Address;     // 0x76 or 0x77
 } ESP32_I2C_Config_t;
 
+typedef enum {
+    I2C_ESP32_OK = 0,
+    I2C_ESP32_NULL_PTR = -1, // Null pointer error
+} I2C_ESP32_Error_t;
+
 // Deklaracja publicznej funkcji inicjalizującej sprzęt
-void BME280_ESP32_I2C_Interface_Init(BME280_Device_t *Device, ESP32_I2C_Config_t *Config);
+I2C_ESP32_Error_t BME280_ESP32_I2C_Interface_Init(BME280_Device_t *Device, ESP32_I2C_Config_t *Config);
 
 
 
