@@ -15,6 +15,10 @@
 
 static int8_t ESP32_I2C_ReadReg(void *InterfacePtr, uint8_t RegisterAddress, uint8_t *Buffer, uint8_t Length) 
 {
+    if (InterfacePtr == NULL) 
+    {
+        return -1; // Return error if InterfacePtr is NULL
+    }
     ESP32_I2C_Config_t *Config = (ESP32_I2C_Config_t *)InterfacePtr; // Cast the pointer to the configuration structure
     // i2c_master_write_read_device implements "Repeated Start"
     esp_err_t err = i2c_master_write_read_device(
@@ -30,6 +34,10 @@ static int8_t ESP32_I2C_ReadReg(void *InterfacePtr, uint8_t RegisterAddress, uin
 
 static int8_t ESP32_I2C_WriteReg(void *InterfacePtr, uint8_t RegisterAddress, uint8_t NewByte) 
 {
+    if (InterfacePtr == NULL) 
+    {
+        return -1; // Return error if InterfacePtr is NULL
+    }
     ESP32_I2C_Config_t *Config = (ESP32_I2C_Config_t *)InterfacePtr; // Cast the pointer to the configuration structure
     // Packing the register address and the new byte into a single buffer for writing
     uint8_t WriteBuffer[2] = {RegisterAddress, NewByte};
@@ -53,11 +61,11 @@ static void ESP32_DelayMs(uint16_t ms)
 
 
 // Zmieniamy argumenty: przyjmujemy główną strukturę i adres I2C
-I2C_ESP32_Error_t BME280_ESP32_I2C_Interface_Init(BME280_Device_t *Device, ESP32_I2C_Config_t *Config) 
+I2C_ESP32_Error_t BME280_ESP32_I2C_Interface_Init(BME280_Device_t *Device, ESP32_I2C_Config_t *ConfigPtr) 
 {
-    if (Device != NULL && Config != NULL) 
+    if (Device != NULL && ConfigPtr != NULL) 
     {
-        Device->InterfacePtr = Config; 
+        Device->InterfacePtr = ConfigPtr; 
         Device->driver.ReadReg  = ESP32_I2C_ReadReg;
         Device->driver.WriteReg = ESP32_I2C_WriteReg;
         Device->driver.DelayMs  = ESP32_DelayMs;

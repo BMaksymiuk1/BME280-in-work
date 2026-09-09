@@ -50,7 +50,7 @@ BME280_Status_t TemperatureOversamplingSet(BME280_Device_t *Device, BME280_Overs
             return BME280_COMM_FAIL; // Return communication failure if reading fails
         }
         Ctrl_Meas &= ~(BIT7 | BIT6 | BIT5); // Clearing
-        Ctrl_Meas |= (osrs_t<<5);    // Setting bits in ctrl_meas register
+        Ctrl_Meas |= (((uint8_t)osrs_t)<<5);    // Setting bits in ctrl_meas register
         status = Device->driver.WriteReg(Device->InterfacePtr, CTRL_MEAS_REG, Ctrl_Meas); // Writing to ctrl_meas register
         if (status != 0)
         {
@@ -78,7 +78,7 @@ BME280_Status_t PressureOversamplingSet(BME280_Device_t *Device, BME280_Oversamp
             return BME280_COMM_FAIL; // Return communication failure if reading fails
         }
         Ctrl_Meas &= ~(BIT4 | BIT3 | BIT2); // Clearing
-        Ctrl_Meas |= (osrs_p<<2);  // Setting bits in ctrl_meas register
+        Ctrl_Meas |= (((uint8_t)osrs_p)<<2);  // Setting bits in ctrl_meas register
         status =Device->driver.WriteReg(Device->InterfacePtr, CTRL_MEAS_REG, Ctrl_Meas); // Writing to ctrl_meas register
         if (status != 0)
         {
@@ -96,19 +96,19 @@ BME280_Status_t ModeSet(BME280_Device_t *Device, BME280_Mode_t Mode)
     {
         uint8_t Ctrl_Meas;
         int8_t status;
+        if (Mode != SLEEP_MODE && Mode != FORCED_MODE && Mode != NORMAL_MODE)
+        {
+                return BME280_INVALID_PARAM;
+        }
         status = Device->driver.ReadReg(Device->InterfacePtr, CTRL_MEAS_REG, &Ctrl_Meas, sizeof(uint8_t)); // Reading from ctrl_meas register
-        if (status != 0)
+        if (status != BME280_OK)
         {
             return BME280_COMM_FAIL; // Return communication failure if reading fails
         }
-        if (Mode != BME280_SLEEP_MODE && Mode != BME280_FORCED_MODE && Mode != BME280_NORMAL_MODE)
-            {
-                return BME280_INVALID_PARAM;
-            }
         Ctrl_Meas &= ~(BIT1 | BIT0); // Clearing
-        Ctrl_Meas |= Mode;  // Setting bits in ctrl_meas register
+        Ctrl_Meas |= ((uint8_t)Mode);  // Setting bits in ctrl_meas register
         status = Device->driver.WriteReg(Device->InterfacePtr, CTRL_MEAS_REG, Ctrl_Meas); // Writing to ctrl_meas register
-        if (status != 0)
+        if (status != BME280_OK)
         {
             return BME280_COMM_FAIL; // Return communication failure if writing fails
         }
@@ -136,7 +136,7 @@ BME280_Status_t HumidityOversamplingSet(BME280_Device_t *Device, BME280_Oversamp
             return BME280_COMM_FAIL; // Return communication failure if reading fails
         }
         Ctrl_Hum &= ~(BIT2 | BIT1 | BIT0); // Clearing
-        Ctrl_Hum |= osrs_h;  // Setting bits in ctrl_hum register
+        Ctrl_Hum |= (((uint8_t)osrs_h)<<0);  // Setting bits in ctrl_hum register
         status = Device->driver.WriteReg(Device->InterfacePtr, CTRL_HUM_REG, Ctrl_Hum); // Writing to ctrl_hum register
         if (status != 0)
         {
@@ -159,14 +159,17 @@ BME280_Status_t HumidityOversamplingSet(BME280_Device_t *Device, BME280_Oversamp
 }
 
 //Standby time set
-BME280_Status_t StandbyTimeSet(BME280_Device_t *Device, uint8_t t_sb)
+// register does NOT update in normal mode!!!
+BME280_Status_t StandbyTimeSet(BME280_Device_t *Device, BME280_StandbyTime_t t_sb)
 {
     if (Device != NULL)
     {
-        int status;
-        if (t_sb > 7)
+        int8_t status;
+        if (t_sb != STANDBY_TIME_0_5_MS && t_sb != STANDBY_TIME_62_5_MS && t_sb != STANDBY_TIME_125_MS &&
+            t_sb != STANDBY_TIME_250_MS && t_sb != STANDBY_TIME_500_MS && t_sb != STANDBY_TIME_1000_MS &&
+            t_sb != STANDBY_TIME_10_MS && t_sb != STANDBY_TIME_20_MS)
         {
-            t_sb = 7;
+            return BME280_INVALID_PARAM; // Return invalid parameter error if t_sb is not valid
         }
         uint8_t Config;
         status = Device->driver.ReadReg(Device->InterfacePtr, CONFIG_REG, &Config, sizeof(uint8_t)); // Reading from config register
@@ -175,19 +178,20 @@ BME280_Status_t StandbyTimeSet(BME280_Device_t *Device, uint8_t t_sb)
             return BME280_COMM_FAIL; // Return communication failure if reading fails
         }
         Config &= ~(BIT7 | BIT6 | BIT5); // clearing
-        Config |= (t_sb<<5); //setting
+        Config |= (((uint8_t)t_sb)<<5); //setting
         status = Device->driver.WriteReg(Device->InterfacePtr, CONFIG_REG, Config); // Writing to config register
         if (status != 0)
         {
             return BME280_COMM_FAIL; // Return communication failure if writing fails
         }
-        // register does NOT update in normal mode!!
+        
         return BME280_OK; // Return success
     }
     return BME280_NULL_PTR; // Return NULL pointer error if Device is NULL
 }
 
 //Filter time constant set
+// register does NOT update in normal mode!!!
 BME280_Status_t FilterSet(BME280_Device_t *Device, uint8_t filter)
 {
     if (Device != NULL)
@@ -210,13 +214,14 @@ BME280_Status_t FilterSet(BME280_Device_t *Device, uint8_t filter)
         {
             return BME280_COMM_FAIL; // Return communication failure if writing fails
         }
-        // register does NOT update in normal mode!!
+        
         return BME280_OK; // Return success
     }
     return BME280_NULL_PTR; // Return NULL pointer error if Device is NULL
 }
 
 //SPI 3-wire interface enable
+// register does NOT update in normal mode!!
 BME280_Status_t SPI3WireEnable(BME280_Device_t *Device, uint8_t spi3w_en)
 {
     if (Device != NULL)
@@ -239,7 +244,7 @@ BME280_Status_t SPI3WireEnable(BME280_Device_t *Device, uint8_t spi3w_en)
         {
             return BME280_COMM_FAIL; // Return communication failure if writing fails
         }
-        // register does NOT update in normal mode!!
+        
         return BME280_OK; // Return success
     }
     return BME280_NULL_PTR; // Return NULL pointer error if Device is NULL
@@ -357,7 +362,7 @@ static BME280_Status_t ReadRawData(BME280_Device_t *Device, RawData_t *RawDataPt
     return BME280_NULL_PTR; // Return NULL pointer error if Device is NULL
 }
 
-uint8_t AreDataRegistersUpdated(BME280_Device_t *Device)
+int8_t AreDataRegistersUpdated(BME280_Device_t *Device)
 {
     if (Device != NULL)
     {
@@ -373,10 +378,10 @@ uint8_t AreDataRegistersUpdated(BME280_Device_t *Device)
         if (StatusBit){return 1;} //1 when conversion is running
         else { return 0; } // 0 when results transferred to data registers
     }
-    return 1; // Return 1 if Device is NULL
+    return -1; // Return -1 if Device is NULL
 }
 
-uint8_t IsInUpdate(BME280_Device_t *Device)
+int8_t IsNVMCopied(BME280_Device_t *Device)
 {
     if (Device != NULL)
     {
@@ -386,7 +391,7 @@ uint8_t IsInUpdate(BME280_Device_t *Device)
         if (StatusBit){return 1;} //1 when NVM being copied to image registers
         else { return 0; } // 0 when copying is done
     }
-    return 2; // Return 2 if Device is NULL
+    return -1; // Return -1 if Device is NULL
 }
 
 //Returns temperature in DegC, resolution is 0.01 DegC. Output value of "5123" equals 51.23 DegC.
@@ -423,7 +428,7 @@ static BME280_Status_t PressureCompensation(BME280_Device_t *Device, int32_t Raw
         var1 = (((((int64_t)1)<<47) + var1)) * ((int64_t)Device->CalibrationData.dig_P1)>>33;
         if (var1 == 0)
         {
-            return 0; //avoid div by 0
+            return BME280_CALC_FAIL; //avoid div by 0
         }
         p = 1048576 - RawPressure;
         p = (((p<<31) - var2) * 3125) / var1;

@@ -43,7 +43,7 @@ typedef struct {
     int32_t t_fine;       
     // Pointer to a user-defined structure containing for I2C port number and address, for SPI port handle and chip select pin         // Computed temperature value
     void *InterfacePtr;   
-    uint8_t DeviceId; // 0 for I2C, 1 for SPI      
+    uint8_t DeviceId;  //Sensor chip ID, expected 0x60 for BME280    
 } BME280_Device_t;
 
 //structure to hold the compensated output data
@@ -58,13 +58,14 @@ typedef enum {
     BME280_NULL_PTR = -1, // Null pointer error
     BME280_COMM_FAIL = -2, // Communication Failure (I2C/SPI read/write error)
     BME280_INVALID_ID = -3, // Invalid sensor ID
-    BME280_INVALID_PARAM = -4 // Invalid parameter passed to function
+    BME280_INVALID_PARAM = -4, // Invalid parameter passed to function
+    BME280_CALC_FAIL = -5 // Calculation failure (e.g. division by zero)
 } BME280_Status_t;
 
 typedef enum {
-    BME280_SLEEP_MODE = 0,
-    BME280_FORCED_MODE = 1,
-    BME280_NORMAL_MODE = 3
+    SLEEP_MODE = 0,
+    FORCED_MODE = 1,
+    NORMAL_MODE = 3
 } BME280_Mode_t;
 
 typedef enum {
@@ -75,6 +76,17 @@ typedef enum {
     OSRS_8X   = 4,
     OSRS_16X  = 5
 } BME280_Oversampling_t;
+
+typedef enum {
+    STANDBY_TIME_0_5_MS = 0,
+    STANDBY_TIME_62_5_MS = 1,
+    STANDBY_TIME_125_MS = 2,
+    STANDBY_TIME_250_MS = 3,
+    STANDBY_TIME_500_MS = 4,
+    STANDBY_TIME_1000_MS = 5,
+    STANDBY_TIME_10_MS = 6,
+    STANDBY_TIME_20_MS = 7
+} BME280_StandbyTime_t;
 
 
 BME280_Status_t TemperatureOversamplingSet(BME280_Device_t *Device, BME280_Oversampling_t osrs_t);
@@ -87,8 +99,8 @@ BME280_Status_t SPI3WireEnable(BME280_Device_t *Device, uint8_t spi3w_en);
 BME280_Status_t SoftReset(BME280_Device_t *Device);
 BME280_Status_t IdRead(BME280_Device_t *Device);
 BME280_Status_t ReadCalibrationData(BME280_Device_t *Device);
-uint8_t AreDataRegistersUpdated(BME280_Device_t *Device);
-uint8_t IsInUpdate(BME280_Device_t *Device);
+int8_t AreDataRegistersUpdated(BME280_Device_t *Device);
+int8_t IsNVMCopied(BME280_Device_t *Device);
 BME280_Status_t GetMeasurements(BME280_Device_t *Device, OutputData_t *OutputDataPtr);
 BME280_Status_t BME280_Init(BME280_Device_t *Device);
 
