@@ -223,8 +223,16 @@ BME280_Status_t ReadCalibrationData(BME280_Device_t *Device)
         Device->CalibrationData.dig_H2 = (int16_t)((Buffer2[1]<<8) | Buffer2[0]);
         Device->CalibrationData.dig_H3 = (uint8_t)Buffer2[2];
         // Register 0xE5 is divided between dig_H4 and dig_H5
-        Device->CalibrationData.dig_H4 = (int16_t)((int8_t)(Buffer2[3]<<4) | (Buffer2[4] & (BIT0 | BIT1 | BIT2 | BIT3)));
-        Device->CalibrationData.dig_H5 = (int16_t)((int8_t)((Buffer2[5]<<4)) | ((Buffer2[4] & (BIT7 | BIT6 | BIT5 | BIT4))>>4));
+        int16_t dig_H4 = (int16_t)((Buffer2[3]<<4) | (Buffer2[4] & (BIT0 | BIT1 | BIT2 | BIT3)));
+        if(dig_H4 & 0x800) { // Check if the sign bit is set
+            dig_H4 |= 0xF000; // Sign-extend to 16 bits
+        }
+        Device->CalibrationData.dig_H4 = dig_H4;
+        int16_t dig_H5 = (int16_t)(((Buffer2[5]<<4)) | ((Buffer2[4] & (BIT7 | BIT6 | BIT5 | BIT4))>>4));
+        if(dig_H5 & 0x800) { // Check if the sign bit is set
+            dig_H5 |= 0xF000; // Sign-extend to 16 bits
+        }
+        Device->CalibrationData.dig_H5 = dig_H5;
         Device->CalibrationData.dig_H6 = (int8_t)Buffer2[6];
         return BME280_OK; // Return success
     }
@@ -239,7 +247,7 @@ static BME280_Status_t ReadRawData(BME280_Device_t *Device, RawData_t *RawDataPt
         Device->driver.ReadReg(Device->InterfacePtr,RAW_DATA_REGISTER_ADDRESS, Buffer, sizeof(Buffer));
         RawDataPtr->RawPressure = (int32_t)(((int32_t)Buffer[0]<<12) | (Buffer[1]<<4) | (Buffer[2]>>4));
         RawDataPtr->RawTemperature = (int32_t)(((int32_t)Buffer[3]<<12) | (Buffer[4]<<4) | (Buffer[5]>>4));
-        RawDataPtr->RawHumidity = (int16_t)(((int16_t)Buffer[6]<<8) | Buffer[7]);
+        RawDataPtr->RawHumidity = (uint16_t)(((uint16_t)Buffer[6]<<8) | Buffer[7]);
         return BME280_OK; // Return success
     }
     return BME280_NULL_PTR; // Return NULL pointer error if Device is NULL
@@ -346,7 +354,7 @@ BME280_Status_t GetMeasurements(BME280_Device_t *Device, OutputData_t *OutputDat
         uint32_t CompensatedPressure = PressureCompensation(Device, RawData.RawPressure);
         OutputDataPtr->Pressure = (float)CompensatedPressure/25600; // in hPa
         uint32_t CompensatedHumidity = HumidityCompensation(Device, RawData.RawHumidity);
-        OutputDataPtr->Humidity = (float)CompensatedHumidity/25600; // in %RH
+        OutputDataPtr->Humidity = (float)CompensatedHumidity/1024; // in %RH
         return BME280_OK; // Return success
     }
     return BME280_NULL_PTR; // Return NULL pointer error if Device or OutputDataPtr is NULL

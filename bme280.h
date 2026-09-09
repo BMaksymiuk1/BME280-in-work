@@ -9,9 +9,9 @@
 
 //structure to hold the raw sensor data
 typedef struct {
-    int32_t RawPressure;
-    int32_t RawTemperature;
-    int16_t RawHumidity;
+    uint32_t RawPressure;
+    uint32_t RawTemperature;
+   uint16_t RawHumidity;
 } RawData_t;
 
 //structure to hold the calibration data read from the sensor
