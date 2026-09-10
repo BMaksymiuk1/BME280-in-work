@@ -57,6 +57,7 @@ BME280_Status_t TemperatureOversamplingSet(BME280_Device_t *Device, BME280_Overs
         {
             return BME280_COMM_FAIL; // Return communication failure if writing fails
         }
+        Device->osrs_t = osrs_t; // Update the device structure with the new oversampling setting
         return BME280_OK; // Return success
     }
     return BME280_NULL_PTR; // Return NULL pointer error if Device is NULL
@@ -70,7 +71,7 @@ BME280_Status_t PressureOversamplingSet(BME280_Device_t *Device, BME280_Oversamp
         uint8_t Ctrl_Meas, status;
         if (osrs_p != BME280_OSRS_SKIP && osrs_p != BME280_OSRS_1X && osrs_p != BME280_OSRS_2X && osrs_p != BME280_OSRS_4X && osrs_p != BME280_OSRS_8X && osrs_p != BME280_OSRS_16X)
         {
-            return BME280_INVALID_PARAM; // Return invalid parameter error if osrs_t is not valid
+            return BME280_INVALID_PARAM; // Return invalid parameter error if osrs_p is not valid
             
         }
         status = Device->driver.ReadReg(Device->InterfacePtr, CTRL_MEAS_REG, &Ctrl_Meas, sizeof(uint8_t)); // Reading from ctrl_meas register
@@ -85,6 +86,7 @@ BME280_Status_t PressureOversamplingSet(BME280_Device_t *Device, BME280_Oversamp
         {
             return BME280_COMM_FAIL; // Return communication failure if writing fails
         }
+        Device->osrs_p = osrs_p; // Update the device structure with the new oversampling setting
         return BME280_OK; // Return success
     }
     return BME280_NULL_PTR; // Return NULL pointer error if Device is NULL
@@ -102,14 +104,14 @@ BME280_Status_t ModeSet(BME280_Device_t *Device, BME280_Mode_t Mode)
                 return BME280_INVALID_PARAM;
         }
         status = Device->driver.ReadReg(Device->InterfacePtr, CTRL_MEAS_REG, &Ctrl_Meas, sizeof(uint8_t)); // Reading from ctrl_meas register
-        if (status != BME280_OK)
+        if (status != 0)
         {
             return BME280_COMM_FAIL; // Return communication failure if reading fails
         }
         Ctrl_Meas &= ~(BIT1 | BIT0); // Clearing
         Ctrl_Meas |= ((uint8_t)Mode);  // Setting bits in ctrl_meas register
         status = Device->driver.WriteReg(Device->InterfacePtr, CTRL_MEAS_REG, Ctrl_Meas); // Writing to ctrl_meas register
-        if (status != BME280_OK)
+        if (status != 0)
         {
             return BME280_COMM_FAIL; // Return communication failure if writing fails
         }
@@ -128,7 +130,7 @@ BME280_Status_t HumidityOversamplingSet(BME280_Device_t *Device, BME280_Oversamp
         int8_t status;
         if (osrs_h != BME280_OSRS_SKIP && osrs_h != BME280_OSRS_1X && osrs_h != BME280_OSRS_2X && osrs_h != BME280_OSRS_4X && osrs_h != BME280_OSRS_8X && osrs_h != BME280_OSRS_16X)
         {
-            return BME280_INVALID_PARAM; // Return invalid parameter error if osrs_t is not valid
+            return BME280_INVALID_PARAM; // Return invalid parameter error if osrs_h is not valid
             
         }
         status = Device->driver.ReadReg(Device->InterfacePtr, CTRL_HUM_REG, &Ctrl_Hum, sizeof(uint8_t)); // Reading from ctrl_hum register
@@ -154,6 +156,7 @@ BME280_Status_t HumidityOversamplingSet(BME280_Device_t *Device, BME280_Oversamp
         {
             return BME280_COMM_FAIL; // Return communication failure if writing fails
         }
+        Device->osrs_h = osrs_h; // Update the device structure with the new oversampling setting
         return BME280_OK; // Return success
     }
     return BME280_NULL_PTR; // Return NULL pointer error if Device is NULL
@@ -199,7 +202,7 @@ BME280_Status_t FilterSet(BME280_Device_t *Device, uint8_t filter)
     {
         if (filter > 4)
         {
-            filter = 4;
+            return BME280_INVALID_PARAM; // Return invalid parameter error if filter is not valid
         }
         uint8_t Config;
         int8_t status;
@@ -229,7 +232,7 @@ BME280_Status_t SPI3WireEnable(BME280_Device_t *Device, uint8_t spi3w_en)
     {
         if (spi3w_en > 1)
         {
-            spi3w_en = 1;
+            return BME280_INVALID_PARAM; // Return invalid parameter error if spi3w_en is not valid
         }
         uint8_t Config;
         int8_t status;
@@ -256,6 +259,10 @@ BME280_Status_t SoftReset(BME280_Device_t *Device)
     if (Device != NULL)
     {
         int8_t status;
+        if(Device->driver.WriteReg == NULL || Device->driver.DelayMs == NULL)
+        {
+            return BME280_INTERFACE_NOT_INITIALIZED; // Return interface not initialized error if function pointers are NULL
+        }
         status = Device->driver.WriteReg(Device->InterfacePtr, RESET_REG, 0xB6);
         if (status != 0)
         {
@@ -453,7 +460,7 @@ static BME280_Status_t PressureCompensation(BME280_Device_t *Device, int32_t Raw
 //Output value of "47445" represents 47445/1024 = 46.333%RH
 static BME280_Status_t HumidityCompensation(BME280_Device_t *Device, int32_t RawHumidity, uint32_t *HumidityPtr)
 {
-    if (Device != NULL)
+    if (Device != NULL && HumidityPtr != NULL)
     {
         int32_t v_x1_u32r;
         v_x1_u32r = (Device->t_fine - ((int32_t)76800));
@@ -479,24 +486,37 @@ BME280_Status_t GetMeasurements(BME280_Device_t *Device, OutputData_t *OutputDat
         if (RawDataReadStatus != BME280_OK) {
             return RawDataReadStatus;
         }
-        int32_t CompensatedTemperature;
-        BME280_Status_t TemperatureStatus = TemperatureCompensation(Device, RawData.RawTemperature, &CompensatedTemperature);
-        if (TemperatureStatus != BME280_OK) {
-            return TemperatureStatus;
+        if(Device->osrs_t != BME280_OSRS_SKIP) 
+        {
+            int32_t CompensatedTemperature;
+            BME280_Status_t TemperatureStatus = TemperatureCompensation(Device, RawData.RawTemperature, &CompensatedTemperature);
+            if (TemperatureStatus != BME280_OK) {
+                return TemperatureStatus;
+            }
+            OutputDataPtr->Temperature = (float)CompensatedTemperature/100; // in .C
+
         }
-        OutputDataPtr->Temperature = (float)CompensatedTemperature/100; // in .C
-        uint32_t CompensatedPressure;
-        BME280_Status_t PressureStatus = PressureCompensation(Device, RawData.RawPressure, &CompensatedPressure);
-        if (PressureStatus != BME280_OK) {
-            return PressureStatus;
+        if(Device->osrs_p != BME280_OSRS_SKIP)
+        {
+            uint32_t CompensatedPressure;
+            BME280_Status_t PressureStatus = PressureCompensation(Device, RawData.RawPressure, &CompensatedPressure);
+            if (PressureStatus != BME280_OK) {
+                return PressureStatus;
+            }
+            OutputDataPtr->Pressure = (float)CompensatedPressure/25600; // in hPa
         }
-        OutputDataPtr->Pressure = (float)CompensatedPressure/25600; // in hPa
-        uint32_t CompensatedHumidity;
-        BME280_Status_t HumidityStatus = HumidityCompensation(Device, RawData.RawHumidity, &CompensatedHumidity);
-        if (HumidityStatus != BME280_OK) {
-            return HumidityStatus;
+        if(Device->osrs_h != BME280_OSRS_SKIP)
+        {
+            uint32_t CompensatedHumidity;
+            BME280_Status_t HumidityStatus = HumidityCompensation(Device, RawData.RawHumidity, &CompensatedHumidity);
+            if (HumidityStatus != BME280_OK) {
+                return HumidityStatus;
+            }
+            OutputDataPtr->Humidity = (float)CompensatedHumidity/1024; // in %RH
         }
-        OutputDataPtr->Humidity = (float)CompensatedHumidity/1024; // in %RH
+
+
+        
         return BME280_OK; // Return success
     }
     return BME280_NULL_PTR; // Return NULL pointer error if Device or OutputDataPtr is NULL
@@ -508,6 +528,10 @@ BME280_Status_t BME280_Init(BME280_Device_t *Device)
     if (Device == NULL) 
     {
         return BME280_NULL_PTR;
+    }
+    if (Device->driver.ReadReg == NULL || Device->driver.DelayMs == NULL || Device->driver.WriteReg == NULL)
+    {
+        return BME280_INTERFACE_NOT_INITIALIZED;
     }
     BME280_Status_t status;
     status = SoftReset(Device);
@@ -528,6 +552,9 @@ BME280_Status_t BME280_Init(BME280_Device_t *Device)
     {
         return status;
     }
+    Device->osrs_t = BME280_OSRS_SKIP; // Default oversampling settings
+    Device->osrs_p = BME280_OSRS_SKIP;
+    Device->osrs_h = BME280_OSRS_SKIP;
     return BME280_OK; // Success
 }
 

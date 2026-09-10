@@ -36,16 +36,6 @@ typedef struct {
     int8_t dig_H6;
 }CalibrationData_t;
 
-//structure to hold the BME280 specific device information and calibration data
-typedef struct {
-    BME280_Driver_t driver;         // Interface functions for reading/writing registers and delays
-    CalibrationData_t CalibrationData; // Unique calibration data for the sensor
-    int32_t t_fine;       
-    // Pointer to a user-defined structure containing for I2C port number and address, for SPI port handle and chip select pin         // Computed temperature value
-    void *InterfacePtr;   
-    uint8_t DeviceId;  //Sensor chip ID, expected 0x60 for BME280    
-} BME280_Device_t;
-
 //structure to hold the compensated output data
 typedef struct {
     float Temperature;
@@ -59,7 +49,8 @@ typedef enum {
     BME280_COMM_FAIL = -2, // Communication Failure (I2C/SPI read/write error)
     BME280_INVALID_ID = -3, // Invalid sensor ID
     BME280_INVALID_PARAM = -4, // Invalid parameter passed to function
-    BME280_CALC_FAIL = -5 // Calculation failure (e.g. division by zero)
+    BME280_CALC_FAIL = -5, // Calculation failure (e.g. division by zero)
+    BME280_INTERFACE_NOT_INITIALIZED = -6 // Interface not initialized (e.g. I2C/SPI not set up)
 } BME280_Status_t;
 
 typedef enum {
@@ -87,6 +78,21 @@ typedef enum {
     BME280_STANDBY_TIME_10_MS = 6,
     BME280_STANDBY_TIME_20_MS = 7
 } BME280_StandbyTime_t;
+
+
+//structure to hold the BME280 specific device information and calibration data
+typedef struct {
+    BME280_Driver_t driver;         // Interface functions for reading/writing registers and delays
+    CalibrationData_t CalibrationData; // Unique calibration data for the sensor
+    int32_t t_fine;       
+    // Pointer to a user-defined structure containing for I2C port number and address, for SPI port handle and chip select pin         // Computed temperature value
+    void *InterfacePtr;   
+    uint8_t DeviceId;  //Sensor chip ID, expected 0x60 for BME280    
+    BME280_Oversampling_t osrs_t; // Temperature oversampling setting
+    BME280_Oversampling_t osrs_p; // Pressure oversampling setting
+    BME280_Oversampling_t osrs_h; // Humidity oversampling setting
+} BME280_Device_t;
+
 
 
 BME280_Status_t TemperatureOversamplingSet(BME280_Device_t *Device, BME280_Oversampling_t osrs_t);

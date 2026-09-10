@@ -15,7 +15,7 @@
 
 static int8_t ESP32_I2C_ReadReg(void *InterfacePtr, uint8_t RegisterAddress, uint8_t *Buffer, uint8_t Length) 
 {
-    if (InterfacePtr == NULL) 
+    if (InterfacePtr == NULL || Buffer == NULL) 
     {
         return I2C_ESP32_NULL_PTR; // Return error if InterfacePtr is NULL
     }
