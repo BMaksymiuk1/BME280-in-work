@@ -50,7 +50,8 @@ typedef enum {
     BME280_INVALID_ID = -3, // Invalid sensor ID
     BME280_INVALID_PARAM = -4, // Invalid parameter passed to function
     BME280_CALC_FAIL = -5, // Calculation failure (e.g. division by zero)
-    BME280_INTERFACE_NOT_INITIALIZED = -6 // Interface not initialized (e.g. I2C/SPI not set up)
+    BME280_INTERFACE_NOT_INITIALIZED = -6, // Interface not initialized (e.g. I2C/SPI not set up)
+    BME280_CANNOT_COMPENSATE_WITHOUT_TEMPERATURE_MEASUREMENT = -7 // Cannot compensate pressure or humidity without a valid temperature measurement
 } BME280_Status_t;
 
 typedef enum {

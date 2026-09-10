@@ -38,6 +38,7 @@ BME280_Status_t TemperatureOversamplingSet(BME280_Device_t *Device, BME280_Overs
 {
     if(Device != NULL)
     {
+        
         uint8_t Ctrl_Meas;
         int8_t status;
         if (osrs_t != BME280_OSRS_SKIP && osrs_t != BME280_OSRS_1X && osrs_t != BME280_OSRS_2X && osrs_t != BME280_OSRS_4X && osrs_t != BME280_OSRS_8X && osrs_t != BME280_OSRS_16X)
@@ -162,6 +163,72 @@ BME280_Status_t HumidityOversamplingSet(BME280_Device_t *Device, BME280_Oversamp
     return BME280_NULL_PTR; // Return NULL pointer error if Device is NULL
 }
 
+//NOT COMPLETE
+static BME280_Status_t ConfigRegisterUpdate(BME280_Device_t *Device, uint8_t Config)
+{
+    //oczyta aktualny mode, ustawi sleep mode, wroci na poprzedni mode
+    if(Device != NULL)
+    {
+        int8_t status;
+        uint8_t Ctrl_Meas;
+        BME280_Mode_t CurrentMode;
+        status = Device->driver.ReadReg(Device->InterfacePtr, CTRL_MEAS_REG, &Ctrl_Meas, sizeof(uint8_t)); // Reading from ctrl_meas register
+        if (status != 0)
+        {
+            return BME280_COMM_FAIL; // Return communication failure if reading fails
+        }
+        CurrentMode = (BME280_Mode_t)(Ctrl_Meas & (BIT1 | BIT0)); // Extracting the current mode bits
+
+        if(CurrentMode == BME280_NORMAL_MODE)
+        {
+            status = ModeSet(Device, BME280_SLEEP_MODE); // Set to sleep mode to allow config register update
+            if (status != BME280_OK)
+            {
+                return status; // Return communication failure if writing fails
+            }
+            status = Device->driver.WriteReg(Device->InterfacePtr, CONFIG_REG, Config); // Writing to config register
+            if (status != 0)
+            {
+                status = ModeSet(Device, CurrentMode); // Restore the previous mode
+                if (status != BME280_OK)
+                {
+                    return status; // Return communication failure if writing fails
+                }
+                return BME280_COMM_FAIL; // Return communication failure if writing fails
+            }
+            status = ModeSet(Device, CurrentMode); // Restore the previous mode
+            if (status != BME280_OK)
+            {
+                return status; // Return communication failure if writing fails
+            }
+        }
+        else if(CurrentMode == BME280_FORCED_MODE)
+        {
+           status = ModeSet(Device, BME280_SLEEP_MODE); // Set to sleep mode to allow config register update
+            if (status != BME280_OK)
+            {
+                return BME280_COMM_FAIL; // Return communication failure if writing fails
+            }
+            status = Device->driver.WriteReg(Device->InterfacePtr, CONFIG_REG, Config); // Writing to config register
+            if (status != 0)
+            {
+                return BME280_COMM_FAIL; // Return communication failure if writing fails
+            }
+        }
+        else
+        {
+            status = Device->driver.WriteReg(Device->InterfacePtr, CONFIG_REG, Config); // Writing to config register
+            if (status != 0)
+            {
+                return BME280_COMM_FAIL; // Return communication failure if writing fails
+            }
+        }
+        
+        return BME280_OK; // Return success
+    }
+    return BME280_NULL_PTR; // Return NULL pointer error if Device is NULL    
+}
+
 //Standby time set
 // register does NOT update in normal mode!!!
 BME280_Status_t StandbyTimeSet(BME280_Device_t *Device, BME280_StandbyTime_t t_sb)
@@ -183,7 +250,7 @@ BME280_Status_t StandbyTimeSet(BME280_Device_t *Device, BME280_StandbyTime_t t_s
         }
         Config &= ~(BIT7 | BIT6 | BIT5); // clearing
         Config |= (((uint8_t)t_sb)<<5); //setting
-        status = Device->driver.WriteReg(Device->InterfacePtr, CONFIG_REG, Config); // Writing to config register
+        status = ConfigRegisterUpdate(Device, t_sb); // Update the config register to apply the new standby time
         if (status != 0)
         {
             return BME280_COMM_FAIL; // Return communication failure if writing fails
@@ -280,15 +347,14 @@ BME280_Status_t IdRead(BME280_Device_t *Device)
     {
         return BME280_NULL_PTR;
     }
+    if(Device->driver.ReadReg == NULL)
+    {
+        return BME280_INTERFACE_NOT_INITIALIZED; // Return interface not initialized error if function pointer is NULL
+    }
 
     int8_t status;
 
-    status = Device->driver.ReadReg(
-        Device->InterfacePtr,
-        ID_REG,
-        &Device->DeviceId,
-        sizeof(uint8_t)
-    );
+    status = Device->driver.ReadReg(Device->InterfacePtr,ID_REG,&Device->DeviceId,sizeof(Device->DeviceId)); // Read the device ID from the sensor
 
     if (status != 0)
     {
@@ -354,18 +420,23 @@ BME280_Status_t ReadCalibrationData(BME280_Device_t *Device)
 //Reading raw data
 static BME280_Status_t ReadRawData(BME280_Device_t *Device, RawData_t *RawDataPtr)
 {
-    if (RawDataPtr != NULL && Device != NULL) {
-        int8_t status;
-        uint8_t Buffer[RAW_DATA_BUFFER_SIZE];
-        status = Device->driver.ReadReg(Device->InterfacePtr,RAW_DATA_REGISTER_ADDRESS, Buffer, sizeof(Buffer));
-        if (status != 0)
+    if (RawDataPtr != NULL && Device != NULL) 
+    {
+        if(Device->driver.ReadReg != NULL)
         {
-            return BME280_COMM_FAIL; // Return communication failure if reading fails
+            int8_t status;
+            uint8_t Buffer[RAW_DATA_BUFFER_SIZE];
+            status = Device->driver.ReadReg(Device->InterfacePtr,RAW_DATA_REGISTER_ADDRESS, Buffer, sizeof(Buffer));
+            if (status != 0)
+            {
+                return BME280_COMM_FAIL; // Return communication failure if reading fails
+            }
+            RawDataPtr->RawPressure = (uint32_t)(((uint32_t)Buffer[0]<<12) | (Buffer[1]<<4) | (Buffer[2]>>4));
+            RawDataPtr->RawTemperature = (uint32_t)(((uint32_t)Buffer[3]<<12) | (Buffer[4]<<4) | (Buffer[5]>>4));
+            RawDataPtr->RawHumidity = (uint16_t)(((uint16_t)Buffer[6]<<8) | Buffer[7]);
+            return BME280_OK; // Return success
         }
-        RawDataPtr->RawPressure = (int32_t)(((int32_t)Buffer[0]<<12) | (Buffer[1]<<4) | (Buffer[2]>>4));
-        RawDataPtr->RawTemperature = (int32_t)(((int32_t)Buffer[3]<<12) | (Buffer[4]<<4) | (Buffer[5]>>4));
-        RawDataPtr->RawHumidity = (uint16_t)(((uint16_t)Buffer[6]<<8) | Buffer[7]);
-        return BME280_OK; // Return success
+        return BME280_INTERFACE_NOT_INITIALIZED; // Return interface not initialized error if ReadReg function pointer is NULL    
     }
     return BME280_NULL_PTR; // Return NULL pointer error if Device is NULL
 }
@@ -374,18 +445,22 @@ BME280_Status_t IsMeasuring(BME280_Device_t *Device, uint8_t *IsMeasuringPtr)
 {
     if (Device != NULL && IsMeasuringPtr != NULL)
     {
-        uint8_t StatusBit;
-        
-        int8_t status;
-        status = Device->driver.ReadReg(Device->InterfacePtr, STATUS_REG_ADDRESS, &StatusBit, sizeof(StatusBit));
-        if (status != 0)
+        if(Device->driver.ReadReg != NULL)
         {
-            return BME280_COMM_FAIL; // Return communication failure if reading fails
+            uint8_t StatusBit;
+            
+            int8_t status;
+            status = Device->driver.ReadReg(Device->InterfacePtr, STATUS_REG_ADDRESS, &StatusBit, sizeof(StatusBit));
+            if (status != 0)
+            {
+                return BME280_COMM_FAIL; // Return communication failure if reading fails
+            }
+            StatusBit &= BIT3;
+            if (StatusBit){*IsMeasuringPtr = 1;} //1 when conversion is running
+            else { *IsMeasuringPtr = 0; } // 0 when results transferred to data registers
+            return BME280_OK; // Return success
         }
-        StatusBit &= BIT3;
-        if (StatusBit){*IsMeasuringPtr = 1;} //1 when conversion is running
-        else { *IsMeasuringPtr = 0; } // 0 when results transferred to data registers
-        return BME280_OK; // Return success
+        return BME280_INTERFACE_NOT_INITIALIZED; // Return interface not initialized error if ReadReg function pointer is NULL
     }
     return BME280_NULL_PTR; // Return NULL pointer error if Device is NULL
 }
@@ -394,17 +469,21 @@ BME280_Status_t IsNVMCopying(BME280_Device_t *Device, uint8_t *IsCopyingPtr)
 {
     if (Device != NULL && IsCopyingPtr != NULL)
     {
-        uint8_t StatusBit;
-        int8_t status;
-        status = Device->driver.ReadReg(Device->InterfacePtr, STATUS_REG_ADDRESS, &StatusBit, sizeof(StatusBit));
-        if (status != 0)
+        if(Device->driver.ReadReg != NULL)
         {
-            return BME280_COMM_FAIL; // Return communication failure if reading fails
+            uint8_t StatusBit;
+            int8_t status;
+            status = Device->driver.ReadReg(Device->InterfacePtr, STATUS_REG_ADDRESS, &StatusBit, sizeof(StatusBit));
+            if (status != 0)
+            {
+                return BME280_COMM_FAIL; // Return communication failure if reading fails
+            }
+            StatusBit &= BIT0;
+            if (StatusBit){ *IsCopyingPtr = 1; } //1 when NVM being copied to image registers
+            else { *IsCopyingPtr = 0; } // 0 when copying is done
+            return BME280_OK; // Return success
         }
-        StatusBit &= BIT0;
-        if (StatusBit){ *IsCopyingPtr = 1; } //1 when NVM being copied to image registers
-        else { *IsCopyingPtr = 0; } // 0 when copying is done
-        return BME280_OK; // Return success
+        return BME280_INTERFACE_NOT_INITIALIZED; // Return interface not initialized error if ReadReg function pointer is NULL
     }
     return BME280_NULL_PTR; // Return NULL pointer error 
 }
@@ -479,44 +558,60 @@ static BME280_Status_t HumidityCompensation(BME280_Device_t *Device, int32_t Raw
 
 BME280_Status_t GetMeasurements(BME280_Device_t *Device, OutputData_t *OutputDataPtr)
 {
-    if (OutputDataPtr != NULL && Device != NULL) {
-        RawData_t RawData;
-        BME280_Status_t RawDataReadStatus;
-        RawDataReadStatus = ReadRawData(Device, &RawData);
-        if (RawDataReadStatus != BME280_OK) {
-            return RawDataReadStatus;
+    if (OutputDataPtr != NULL && Device != NULL)
+    {
+        if (Device->osrs_t == BME280_OSRS_SKIP && Device->osrs_p == BME280_OSRS_SKIP && Device->osrs_h == BME280_OSRS_SKIP)
+        {
+            return BME280_OK;
         }
+        if((Device->osrs_t == BME280_OSRS_SKIP) && (Device->osrs_p != BME280_OSRS_SKIP || Device->osrs_h != BME280_OSRS_SKIP))
+        {
+            return BME280_CANNOT_COMPENSATE_WITHOUT_TEMPERATURE_MEASUREMENT;
+        }
+        RawData_t RawData;
+        BME280_Status_t Status;
+        Status = ReadRawData(Device, &RawData);
+        if (Status != BME280_OK)
+        {
+            return Status;
+        }
+        int32_t CompensatedTemperature;
+        uint32_t CompensatedPressure;
+        uint32_t CompensatedHumidity;
         if(Device->osrs_t != BME280_OSRS_SKIP) 
         {
-            int32_t CompensatedTemperature;
-            BME280_Status_t TemperatureStatus = TemperatureCompensation(Device, RawData.RawTemperature, &CompensatedTemperature);
-            if (TemperatureStatus != BME280_OK) {
-                return TemperatureStatus;
+            Status = TemperatureCompensation(Device, RawData.RawTemperature, &CompensatedTemperature);
+            if (Status != BME280_OK) {
+                return Status;
             }
-            OutputDataPtr->Temperature = (float)CompensatedTemperature/100; // in .C
-
         }
         if(Device->osrs_p != BME280_OSRS_SKIP)
         {
-            uint32_t CompensatedPressure;
-            BME280_Status_t PressureStatus = PressureCompensation(Device, RawData.RawPressure, &CompensatedPressure);
-            if (PressureStatus != BME280_OK) {
-                return PressureStatus;
+            Status = PressureCompensation(Device, RawData.RawPressure, &CompensatedPressure);
+            if (Status != BME280_OK) {
+                return Status;
             }
+        }
+        if(Device->osrs_h != BME280_OSRS_SKIP)
+        {
+            Status = HumidityCompensation(Device, RawData.RawHumidity, &CompensatedHumidity);
+            if (Status != BME280_OK)
+            {
+                return Status;
+            }
+        }
+        if(Device->osrs_t != BME280_OSRS_SKIP)
+        {
+            OutputDataPtr->Temperature = (float)CompensatedTemperature/100; // in .C
+        } 
+        if(Device->osrs_p != BME280_OSRS_SKIP)
+        {
             OutputDataPtr->Pressure = (float)CompensatedPressure/25600; // in hPa
         }
         if(Device->osrs_h != BME280_OSRS_SKIP)
         {
-            uint32_t CompensatedHumidity;
-            BME280_Status_t HumidityStatus = HumidityCompensation(Device, RawData.RawHumidity, &CompensatedHumidity);
-            if (HumidityStatus != BME280_OK) {
-                return HumidityStatus;
-            }
             OutputDataPtr->Humidity = (float)CompensatedHumidity/1024; // in %RH
         }
-
-
-        
         return BME280_OK; // Return success
     }
     return BME280_NULL_PTR; // Return NULL pointer error if Device or OutputDataPtr is NULL
