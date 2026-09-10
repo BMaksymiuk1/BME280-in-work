@@ -13,6 +13,7 @@ typedef struct {
 typedef enum {
     I2C_ESP32_OK = 0,
     I2C_ESP32_NULL_PTR = -1, // Null pointer error
+    I2C_ESP32_ERROR = -2     // General I2C error
 } I2C_ESP32_Error_t;
 
 // Deklaracja publicznej funkcji inicjalizującej sprzęt

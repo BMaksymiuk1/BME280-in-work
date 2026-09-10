@@ -63,29 +63,29 @@ typedef enum {
 } BME280_Status_t;
 
 typedef enum {
-    SLEEP_MODE = 0,
-    FORCED_MODE = 1,
-    NORMAL_MODE = 3
+    BME280_SLEEP_MODE = 0,
+    BME280_FORCED_MODE = 1,
+    BME280_NORMAL_MODE = 3
 } BME280_Mode_t;
 
 typedef enum {
-    OSRS_SKIP = 0,
-    OSRS_1X   = 1,
-    OSRS_2X   = 2,
-    OSRS_4X   = 3,
-    OSRS_8X   = 4,
-    OSRS_16X  = 5
+    BME280_OSRS_SKIP = 0,
+    BME280_OSRS_1X   = 1,
+    BME280_OSRS_2X   = 2,
+    BME280_OSRS_4X   = 3,
+    BME280_OSRS_8X   = 4,
+    BME280_OSRS_16X  = 5
 } BME280_Oversampling_t;
 
 typedef enum {
-    STANDBY_TIME_0_5_MS = 0,
-    STANDBY_TIME_62_5_MS = 1,
-    STANDBY_TIME_125_MS = 2,
-    STANDBY_TIME_250_MS = 3,
-    STANDBY_TIME_500_MS = 4,
-    STANDBY_TIME_1000_MS = 5,
-    STANDBY_TIME_10_MS = 6,
-    STANDBY_TIME_20_MS = 7
+    BME280_STANDBY_TIME_0_5_MS = 0,
+    BME280_STANDBY_TIME_62_5_MS = 1,
+    BME280_STANDBY_TIME_125_MS = 2,
+    BME280_STANDBY_TIME_250_MS = 3,
+    BME280_STANDBY_TIME_500_MS = 4,
+    BME280_STANDBY_TIME_1000_MS = 5,
+    BME280_STANDBY_TIME_10_MS = 6,
+    BME280_STANDBY_TIME_20_MS = 7
 } BME280_StandbyTime_t;
 
 
@@ -93,14 +93,14 @@ BME280_Status_t TemperatureOversamplingSet(BME280_Device_t *Device, BME280_Overs
 BME280_Status_t PressureOversamplingSet(BME280_Device_t *Device, BME280_Oversampling_t osrs_p);
 BME280_Status_t ModeSet(BME280_Device_t *Device, BME280_Mode_t Mode);
 BME280_Status_t HumidityOversamplingSet(BME280_Device_t *Device, BME280_Oversampling_t osrs_h);
-BME280_Status_t StandbyTimeSet(BME280_Device_t *Device, uint8_t t_sb);
+BME280_Status_t StandbyTimeSet(BME280_Device_t *Device, BME280_StandbyTime_t t_sb);
 BME280_Status_t FilterSet(BME280_Device_t *Device, uint8_t filter);
 BME280_Status_t SPI3WireEnable(BME280_Device_t *Device, uint8_t spi3w_en);
 BME280_Status_t SoftReset(BME280_Device_t *Device);
 BME280_Status_t IdRead(BME280_Device_t *Device);
 BME280_Status_t ReadCalibrationData(BME280_Device_t *Device);
-int8_t AreDataRegistersUpdated(BME280_Device_t *Device);
-int8_t IsNVMCopied(BME280_Device_t *Device);
+BME280_Status_t IsMeasuring(BME280_Device_t *Device, uint8_t *IsMeasuringPtr);
+BME280_Status_t IsNVMCopying(BME280_Device_t *Device, uint8_t *IsCopyingPtr);
 BME280_Status_t GetMeasurements(BME280_Device_t *Device, OutputData_t *OutputDataPtr);
 BME280_Status_t BME280_Init(BME280_Device_t *Device);
 

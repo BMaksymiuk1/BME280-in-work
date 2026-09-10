@@ -17,7 +17,7 @@ static int8_t ESP32_I2C_ReadReg(void *InterfacePtr, uint8_t RegisterAddress, uin
 {
     if (InterfacePtr == NULL) 
     {
-        return -1; // Return error if InterfacePtr is NULL
+        return I2C_ESP32_NULL_PTR; // Return error if InterfacePtr is NULL
     }
     ESP32_I2C_Config_t *Config = (ESP32_I2C_Config_t *)InterfacePtr; // Cast the pointer to the configuration structure
     // i2c_master_write_read_device implements "Repeated Start"
@@ -29,14 +29,14 @@ static int8_t ESP32_I2C_ReadReg(void *InterfacePtr, uint8_t RegisterAddress, uin
         I2C_TIMEOUT_MS / portTICK_PERIOD_MS
     );
     
-    return (err == ESP_OK) ? 0 : -1;
+    return (err == ESP_OK) ? I2C_ESP32_OK : I2C_ESP32_ERROR;
 }
 
 static int8_t ESP32_I2C_WriteReg(void *InterfacePtr, uint8_t RegisterAddress, uint8_t NewByte) 
 {
     if (InterfacePtr == NULL) 
     {
-        return -1; // Return error if InterfacePtr is NULL
+        return I2C_ESP32_NULL_PTR; // Return error if InterfacePtr is NULL
     }
     ESP32_I2C_Config_t *Config = (ESP32_I2C_Config_t *)InterfacePtr; // Cast the pointer to the configuration structure
     // Packing the register address and the new byte into a single buffer for writing
@@ -49,7 +49,7 @@ static int8_t ESP32_I2C_WriteReg(void *InterfacePtr, uint8_t RegisterAddress, ui
         I2C_TIMEOUT_MS / portTICK_PERIOD_MS
     );
     
-    return (err == ESP_OK) ? 0 : -1;
+    return (err == ESP_OK) ? I2C_ESP32_OK : I2C_ESP32_ERROR;
 }
 
 static void ESP32_DelayMs(uint16_t ms) 

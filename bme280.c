@@ -3,6 +3,7 @@
 //a
 
 #include <stdint.h>
+#include <stddef.h>
 
 #include "bme280.h"
 #include "bme280_driver.h"
@@ -39,7 +40,7 @@ BME280_Status_t TemperatureOversamplingSet(BME280_Device_t *Device, BME280_Overs
     {
         uint8_t Ctrl_Meas;
         int8_t status;
-        if (osrs_t != OSRS_SKIP && osrs_t != OSRS_1X && osrs_t != OSRS_2X && osrs_t != OSRS_4X && osrs_t != OSRS_8X && osrs_t != OSRS_16X)
+        if (osrs_t != BME280_OSRS_SKIP && osrs_t != BME280_OSRS_1X && osrs_t != BME280_OSRS_2X && osrs_t != BME280_OSRS_4X && osrs_t != BME280_OSRS_8X && osrs_t != BME280_OSRS_16X)
         {
             return BME280_INVALID_PARAM; // Return invalid parameter error if osrs_t is not valid
             
@@ -67,7 +68,7 @@ BME280_Status_t PressureOversamplingSet(BME280_Device_t *Device, BME280_Oversamp
     if(Device != NULL)
     {
         uint8_t Ctrl_Meas, status;
-        if (osrs_p != OSRS_SKIP && osrs_p != OSRS_1X && osrs_p != OSRS_2X && osrs_p != OSRS_4X && osrs_p != OSRS_8X && osrs_p != OSRS_16X)
+        if (osrs_p != BME280_OSRS_SKIP && osrs_p != BME280_OSRS_1X && osrs_p != BME280_OSRS_2X && osrs_p != BME280_OSRS_4X && osrs_p != BME280_OSRS_8X && osrs_p != BME280_OSRS_16X)
         {
             return BME280_INVALID_PARAM; // Return invalid parameter error if osrs_t is not valid
             
@@ -96,7 +97,7 @@ BME280_Status_t ModeSet(BME280_Device_t *Device, BME280_Mode_t Mode)
     {
         uint8_t Ctrl_Meas;
         int8_t status;
-        if (Mode != SLEEP_MODE && Mode != FORCED_MODE && Mode != NORMAL_MODE)
+        if (Mode != BME280_SLEEP_MODE && Mode != BME280_FORCED_MODE && Mode != BME280_NORMAL_MODE)
         {
                 return BME280_INVALID_PARAM;
         }
@@ -125,7 +126,7 @@ BME280_Status_t HumidityOversamplingSet(BME280_Device_t *Device, BME280_Oversamp
     {
         uint8_t Ctrl_Hum;
         int8_t status;
-        if (osrs_h != OSRS_SKIP && osrs_h != OSRS_1X && osrs_h != OSRS_2X && osrs_h != OSRS_4X && osrs_h != OSRS_8X && osrs_h != OSRS_16X)
+        if (osrs_h != BME280_OSRS_SKIP && osrs_h != BME280_OSRS_1X && osrs_h != BME280_OSRS_2X && osrs_h != BME280_OSRS_4X && osrs_h != BME280_OSRS_8X && osrs_h != BME280_OSRS_16X)
         {
             return BME280_INVALID_PARAM; // Return invalid parameter error if osrs_t is not valid
             
@@ -165,9 +166,9 @@ BME280_Status_t StandbyTimeSet(BME280_Device_t *Device, BME280_StandbyTime_t t_s
     if (Device != NULL)
     {
         int8_t status;
-        if (t_sb != STANDBY_TIME_0_5_MS && t_sb != STANDBY_TIME_62_5_MS && t_sb != STANDBY_TIME_125_MS &&
-            t_sb != STANDBY_TIME_250_MS && t_sb != STANDBY_TIME_500_MS && t_sb != STANDBY_TIME_1000_MS &&
-            t_sb != STANDBY_TIME_10_MS && t_sb != STANDBY_TIME_20_MS)
+        if (t_sb != BME280_STANDBY_TIME_0_5_MS && t_sb != BME280_STANDBY_TIME_62_5_MS && t_sb != BME280_STANDBY_TIME_125_MS &&
+            t_sb != BME280_STANDBY_TIME_250_MS && t_sb != BME280_STANDBY_TIME_500_MS && t_sb != BME280_STANDBY_TIME_1000_MS &&
+            t_sb != BME280_STANDBY_TIME_10_MS && t_sb != BME280_STANDBY_TIME_20_MS)
         {
             return BME280_INVALID_PARAM; // Return invalid parameter error if t_sb is not valid
         }
@@ -362,9 +363,9 @@ static BME280_Status_t ReadRawData(BME280_Device_t *Device, RawData_t *RawDataPt
     return BME280_NULL_PTR; // Return NULL pointer error if Device is NULL
 }
 
-int8_t AreDataRegistersUpdated(BME280_Device_t *Device)
+BME280_Status_t IsMeasuring(BME280_Device_t *Device, uint8_t *IsMeasuringPtr)
 {
-    if (Device != NULL)
+    if (Device != NULL && IsMeasuringPtr != NULL)
     {
         uint8_t StatusBit;
         
@@ -372,26 +373,33 @@ int8_t AreDataRegistersUpdated(BME280_Device_t *Device)
         status = Device->driver.ReadReg(Device->InterfacePtr, STATUS_REG_ADDRESS, &StatusBit, sizeof(StatusBit));
         if (status != 0)
         {
-            return 1; // Return default value if reading fails
+            return BME280_COMM_FAIL; // Return communication failure if reading fails
         }
         StatusBit &= BIT3;
-        if (StatusBit){return 1;} //1 when conversion is running
-        else { return 0; } // 0 when results transferred to data registers
+        if (StatusBit){*IsMeasuringPtr = 1;} //1 when conversion is running
+        else { *IsMeasuringPtr = 0; } // 0 when results transferred to data registers
+        return BME280_OK; // Return success
     }
-    return -1; // Return -1 if Device is NULL
+    return BME280_NULL_PTR; // Return NULL pointer error if Device is NULL
 }
 
-int8_t IsNVMCopied(BME280_Device_t *Device)
+BME280_Status_t IsNVMCopying(BME280_Device_t *Device, uint8_t *IsCopyingPtr)
 {
-    if (Device != NULL)
+    if (Device != NULL && IsCopyingPtr != NULL)
     {
         uint8_t StatusBit;
-        Device->driver.ReadReg(Device->InterfacePtr, STATUS_REG_ADDRESS, &StatusBit, sizeof(StatusBit));
+        int8_t status;
+        status = Device->driver.ReadReg(Device->InterfacePtr, STATUS_REG_ADDRESS, &StatusBit, sizeof(StatusBit));
+        if (status != 0)
+        {
+            return BME280_COMM_FAIL; // Return communication failure if reading fails
+        }
         StatusBit &= BIT0;
-        if (StatusBit){return 1;} //1 when NVM being copied to image registers
-        else { return 0; } // 0 when copying is done
+        if (StatusBit){ *IsCopyingPtr = 1; } //1 when NVM being copied to image registers
+        else { *IsCopyingPtr = 0; } // 0 when copying is done
+        return BME280_OK; // Return success
     }
-    return -1; // Return -1 if Device is NULL
+    return BME280_NULL_PTR; // Return NULL pointer error 
 }
 
 //Returns temperature in DegC, resolution is 0.01 DegC. Output value of "5123" equals 51.23 DegC.
