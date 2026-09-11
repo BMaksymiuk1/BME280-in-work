@@ -46,12 +46,16 @@ BME280_Status_t TemperatureOversamplingSet(BME280_Device_t *Device, BME280_Overs
             return BME280_INVALID_PARAM; // Return invalid parameter error if osrs_t is not valid
             
         }
+        if(Device->driver.ReadReg == NULL || Device->driver.WriteReg == NULL)
+        {
+            return BME280_INTERFACE_NOT_INITIALIZED;
+        }
         status = Device->driver.ReadReg(Device->InterfacePtr, CTRL_MEAS_REG, &Ctrl_Meas, sizeof(uint8_t)); // Reading from ctrl_meas register
         if (status != 0)
         {
             return BME280_COMM_FAIL; // Return communication failure if reading fails
         }
-        Ctrl_Meas &= ~(BIT7 | BIT6 | BIT5); // Clearing
+        Ctrl_Meas &= ~(BIT7 | BIT6 | BIT5); // Clear osrs_t bits
         Ctrl_Meas |= (((uint8_t)osrs_t)<<5);    // Setting bits in ctrl_meas register
         status = Device->driver.WriteReg(Device->InterfacePtr, CTRL_MEAS_REG, Ctrl_Meas); // Writing to ctrl_meas register
         if (status != 0)
@@ -69,18 +73,23 @@ BME280_Status_t PressureOversamplingSet(BME280_Device_t *Device, BME280_Oversamp
 {
     if(Device != NULL)
     {
-        uint8_t Ctrl_Meas, status;
+        uint8_t Ctrl_Meas;
+        int8_t status;
         if (osrs_p != BME280_OSRS_SKIP && osrs_p != BME280_OSRS_1X && osrs_p != BME280_OSRS_2X && osrs_p != BME280_OSRS_4X && osrs_p != BME280_OSRS_8X && osrs_p != BME280_OSRS_16X)
         {
             return BME280_INVALID_PARAM; // Return invalid parameter error if osrs_p is not valid
             
+        }
+        if(Device->driver.ReadReg == NULL || Device->driver.WriteReg == NULL)
+        {
+            return BME280_INTERFACE_NOT_INITIALIZED;
         }
         status = Device->driver.ReadReg(Device->InterfacePtr, CTRL_MEAS_REG, &Ctrl_Meas, sizeof(uint8_t)); // Reading from ctrl_meas register
         if (status != 0)
         {
             return BME280_COMM_FAIL; // Return communication failure if reading fails
         }
-        Ctrl_Meas &= ~(BIT4 | BIT3 | BIT2); // Clearing
+        Ctrl_Meas &= ~(BIT4 | BIT3 | BIT2); // Clear osrs_p bits
         Ctrl_Meas |= (((uint8_t)osrs_p)<<2);  // Setting bits in ctrl_meas register
         status =Device->driver.WriteReg(Device->InterfacePtr, CTRL_MEAS_REG, Ctrl_Meas); // Writing to ctrl_meas register
         if (status != 0)
@@ -104,12 +113,16 @@ BME280_Status_t ModeSet(BME280_Device_t *Device, BME280_Mode_t Mode)
         {
                 return BME280_INVALID_PARAM;
         }
+        if(Device->driver.ReadReg == NULL || Device->driver.WriteReg == NULL)
+        {
+            return BME280_INTERFACE_NOT_INITIALIZED;
+        }
         status = Device->driver.ReadReg(Device->InterfacePtr, CTRL_MEAS_REG, &Ctrl_Meas, sizeof(uint8_t)); // Reading from ctrl_meas register
         if (status != 0)
         {
             return BME280_COMM_FAIL; // Return communication failure if reading fails
         }
-        Ctrl_Meas &= ~(BIT1 | BIT0); // Clearing
+        Ctrl_Meas &= ~(BIT1 | BIT0); // Clear mode bits
         Ctrl_Meas |= ((uint8_t)Mode);  // Setting bits in ctrl_meas register
         status = Device->driver.WriteReg(Device->InterfacePtr, CTRL_MEAS_REG, Ctrl_Meas); // Writing to ctrl_meas register
         if (status != 0)
@@ -134,12 +147,16 @@ BME280_Status_t HumidityOversamplingSet(BME280_Device_t *Device, BME280_Oversamp
             return BME280_INVALID_PARAM; // Return invalid parameter error if osrs_h is not valid
             
         }
+        if(Device->driver.ReadReg == NULL || Device->driver.WriteReg == NULL)
+        {
+            return BME280_INTERFACE_NOT_INITIALIZED;
+        }
         status = Device->driver.ReadReg(Device->InterfacePtr, CTRL_HUM_REG, &Ctrl_Hum, sizeof(uint8_t)); // Reading from ctrl_hum register
         if (status != 0)
         {
             return BME280_COMM_FAIL; // Return communication failure if reading fails
         }
-        Ctrl_Hum &= ~(BIT2 | BIT1 | BIT0); // Clearing
+        Ctrl_Hum &= ~(BIT2 | BIT1 | BIT0); // Clear osrs_h bits
         Ctrl_Hum |= (((uint8_t)osrs_h)<<0);  // Setting bits in ctrl_hum register
         status = Device->driver.WriteReg(Device->InterfacePtr, CTRL_HUM_REG, Ctrl_Hum); // Writing to ctrl_hum register
         if (status != 0)
@@ -163,7 +180,8 @@ BME280_Status_t HumidityOversamplingSet(BME280_Device_t *Device, BME280_Oversamp
     return BME280_NULL_PTR; // Return NULL pointer error if Device is NULL
 }
 
-//NOT COMPLETE
+//This fuction updates the config register, it is used in StandbyTimeSet, FilterSet, SPI3WireEnable
+// functios to update the config register in normal mode
 static BME280_Status_t ConfigRegisterUpdate(BME280_Device_t *Device, uint8_t Config)
 {
     //oczyta aktualny mode, ustawi sleep mode, wroci na poprzedni mode
@@ -184,7 +202,7 @@ static BME280_Status_t ConfigRegisterUpdate(BME280_Device_t *Device, uint8_t Con
             status = ModeSet(Device, BME280_SLEEP_MODE); // Set to sleep mode to allow config register update
             if (status != BME280_OK)
             {
-                return status; // Return communication failure if writing fails
+                return status; // Return failure if setting mode fails
             }
             status = Device->driver.WriteReg(Device->InterfacePtr, CONFIG_REG, Config); // Writing to config register
             if (status != 0)
@@ -192,14 +210,14 @@ static BME280_Status_t ConfigRegisterUpdate(BME280_Device_t *Device, uint8_t Con
                 status = ModeSet(Device, CurrentMode); // Restore the previous mode
                 if (status != BME280_OK)
                 {
-                    return status; // Return communication failure if writing fails
+                    return status; // Return failure if setting mode fails
                 }
                 return BME280_COMM_FAIL; // Return communication failure if writing fails
             }
             status = ModeSet(Device, CurrentMode); // Restore the previous mode
             if (status != BME280_OK)
             {
-                return status; // Return communication failure if writing fails
+                return status; // Return failure if setting mode fails
             }
         }
         else if(CurrentMode == BME280_FORCED_MODE)
@@ -207,8 +225,16 @@ static BME280_Status_t ConfigRegisterUpdate(BME280_Device_t *Device, uint8_t Con
            status = ModeSet(Device, BME280_SLEEP_MODE); // Set to sleep mode to allow config register update
             if (status != BME280_OK)
             {
+                return status; // Return failure if setting mode fails
+            }
+            status = Device->driver.WriteReg(Device->InterfacePtr, CONFIG_REG, Config); // Writing to config register
+            if (status != 0)
+            {
                 return BME280_COMM_FAIL; // Return communication failure if writing fails
             }
+        }
+        else if(CurrentMode == BME280_SLEEP_MODE)
+        {
             status = Device->driver.WriteReg(Device->InterfacePtr, CONFIG_REG, Config); // Writing to config register
             if (status != 0)
             {
@@ -217,11 +243,7 @@ static BME280_Status_t ConfigRegisterUpdate(BME280_Device_t *Device, uint8_t Con
         }
         else
         {
-            status = Device->driver.WriteReg(Device->InterfacePtr, CONFIG_REG, Config); // Writing to config register
-            if (status != 0)
-            {
-                return BME280_COMM_FAIL; // Return communication failure if writing fails
-            }
+            return BME280_INVALID_PARAM;
         }
         
         return BME280_OK; // Return success
@@ -230,7 +252,6 @@ static BME280_Status_t ConfigRegisterUpdate(BME280_Device_t *Device, uint8_t Con
 }
 
 //Standby time set
-// register does NOT update in normal mode!!!
 BME280_Status_t StandbyTimeSet(BME280_Device_t *Device, BME280_StandbyTime_t t_sb)
 {
     if (Device != NULL)
@@ -242,18 +263,22 @@ BME280_Status_t StandbyTimeSet(BME280_Device_t *Device, BME280_StandbyTime_t t_s
         {
             return BME280_INVALID_PARAM; // Return invalid parameter error if t_sb is not valid
         }
+        if(Device->driver.ReadReg == NULL || Device->driver.WriteReg == NULL)
+        {
+            return BME280_INTERFACE_NOT_INITIALIZED;
+        }
         uint8_t Config;
         status = Device->driver.ReadReg(Device->InterfacePtr, CONFIG_REG, &Config, sizeof(uint8_t)); // Reading from config register
         if (status != 0)
         {
             return BME280_COMM_FAIL; // Return communication failure if reading fails
         }
-        Config &= ~(BIT7 | BIT6 | BIT5); // clearing
+        Config &= ~(BIT7 | BIT6 | BIT5); // clear t_sb bits
         Config |= (((uint8_t)t_sb)<<5); //setting
-        status = ConfigRegisterUpdate(Device, t_sb); // Update the config register to apply the new standby time
+        status = ConfigRegisterUpdate(Device, Config); // Update the config register to apply the new standby time
         if (status != 0)
         {
-            return BME280_COMM_FAIL; // Return communication failure if writing fails
+            return status; 
         }
         
         return BME280_OK; // Return success
@@ -262,7 +287,6 @@ BME280_Status_t StandbyTimeSet(BME280_Device_t *Device, BME280_StandbyTime_t t_s
 }
 
 //Filter time constant set
-// register does NOT update in normal mode!!!
 BME280_Status_t FilterSet(BME280_Device_t *Device, uint8_t filter)
 {
     if (Device != NULL)
@@ -273,17 +297,21 @@ BME280_Status_t FilterSet(BME280_Device_t *Device, uint8_t filter)
         }
         uint8_t Config;
         int8_t status;
+        if(Device->driver.ReadReg == NULL || Device->driver.WriteReg == NULL)
+        {
+            return BME280_INTERFACE_NOT_INITIALIZED;
+        }
         status = Device->driver.ReadReg(Device->InterfacePtr, CONFIG_REG, &Config, sizeof(uint8_t)); // Reading from config register
         if (status != 0)
         {
             return BME280_COMM_FAIL; // Return communication failure if reading fails
         }
-        Config &= ~(BIT4 | BIT3 | BIT2); // clearing
+        Config &= ~(BIT4 | BIT3 | BIT2); // clear filter bits
         Config |= (filter<<2); //setting
-        status = Device->driver.WriteReg(Device->InterfacePtr, CONFIG_REG, Config); // Writing to config register
+        status = ConfigRegisterUpdate(Device, Config); // Update the config register to apply the new filter setting
         if (status != 0)
         {
-            return BME280_COMM_FAIL; // Return communication failure if writing fails
+            return status; 
         }
         
         return BME280_OK; // Return success
@@ -292,7 +320,7 @@ BME280_Status_t FilterSet(BME280_Device_t *Device, uint8_t filter)
 }
 
 //SPI 3-wire interface enable
-// register does NOT update in normal mode!!
+//IF spi3w_en BIT SET I2C IS DISABLED
 BME280_Status_t SPI3WireEnable(BME280_Device_t *Device, uint8_t spi3w_en)
 {
     if (Device != NULL)
@@ -301,6 +329,10 @@ BME280_Status_t SPI3WireEnable(BME280_Device_t *Device, uint8_t spi3w_en)
         {
             return BME280_INVALID_PARAM; // Return invalid parameter error if spi3w_en is not valid
         }
+        if(Device->driver.ReadReg == NULL || Device->driver.WriteReg == NULL)
+        {
+            return BME280_INTERFACE_NOT_INITIALIZED;
+        }
         uint8_t Config;
         int8_t status;
         status = Device->driver.ReadReg(Device->InterfacePtr, CONFIG_REG, &Config, sizeof(uint8_t)); // Reading from config register
@@ -308,14 +340,13 @@ BME280_Status_t SPI3WireEnable(BME280_Device_t *Device, uint8_t spi3w_en)
         {
             return BME280_COMM_FAIL; // Return communication failure if reading fails
         }
-        Config &= ~(BIT0); // clearing
+        Config &= ~(BIT0); // clear spi3w_en bits
         Config |= spi3w_en; //setting
-        status = Device->driver.WriteReg(Device->InterfacePtr, CONFIG_REG, Config); // Writing to config register
+        status = ConfigRegisterUpdate(Device, Config); // Update the config register to enable/disable 3 wire SPi
         if (status != 0)
         {
-            return BME280_COMM_FAIL; // Return communication failure if writing fails
+            return status; 
         }
-        
         return BME280_OK; // Return success
     }
     return BME280_NULL_PTR; // Return NULL pointer error if Device is NULL
@@ -336,6 +367,10 @@ BME280_Status_t SoftReset(BME280_Device_t *Device)
             return BME280_COMM_FAIL; // Return communication failure if writing fails
         }
         Device->driver.DelayMs(5); // Delay needed before further operations after soft reset
+
+        Device->osrs_t = BME280_OSRS_SKIP; // Default oversampling settings
+        Device->osrs_p = BME280_OSRS_SKIP;
+        Device->osrs_h = BME280_OSRS_SKIP;
         return BME280_OK; // Return success
     }
     return BME280_NULL_PTR; // Return NULL pointer error if Device is NULL
@@ -371,6 +406,10 @@ BME280_Status_t ReadCalibrationData(BME280_Device_t *Device)
         uint8_t Buffer1[26];
         uint8_t Buffer2[7];
         int8_t status;
+        if(Device->driver.ReadReg == NULL)
+        {
+            return BME280_INTERFACE_NOT_INITIALIZED; 
+        }
         status = Device->driver.ReadReg(Device->InterfacePtr, CALIBRATION_DATA_REG1, Buffer1, sizeof(Buffer1)); //read calibration data
         if (status != 0)
         {
@@ -647,9 +686,7 @@ BME280_Status_t BME280_Init(BME280_Device_t *Device)
     {
         return status;
     }
-    Device->osrs_t = BME280_OSRS_SKIP; // Default oversampling settings
-    Device->osrs_p = BME280_OSRS_SKIP;
-    Device->osrs_h = BME280_OSRS_SKIP;
+
     return BME280_OK; // Success
 }
 
