@@ -16,11 +16,6 @@ typedef enum {
 
 typedef struct
 {
-    i2c_port_num_t I2C_ESP32_PortNum;
-
-    gpio_num_t I2C_ESP32_SDA_IO;
-    gpio_num_t I2C_ESP32_SCL_IO;
-
     uint8_t I2C_ESP32_Address;
     uint32_t I2C_ESP32_SpeedHz;
 
@@ -28,5 +23,8 @@ typedef struct
     i2c_master_dev_handle_t I2C_ESP32_DeviceHandle;
 
 } I2C_ESP32_Config_t;
+
+I2C_ESP32_Error_t BME280_ESP32_I2C_Interface_Init(BME280_Device_t *Device, I2C_ESP32_Config_t *Config);
+
 
 #endif // BME280_ESP32_I2C_INTERFACE_H
