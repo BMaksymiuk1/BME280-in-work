@@ -1,6 +1,7 @@
+//////////////////////////////////////////////    BME280 I2C INTERFACE FOR ESP32   ///////////////////////////////////////////////////////
+
 // User is responsible for creating the I2C bus
 // This API only initializes a device on an existing bus
-
 
 
 #include "bme280_esp32_I2C_interface.h"
@@ -18,42 +19,94 @@
 esp_err_t status;
 
 
-static int8_t ESP32_I2C_ReadReg(void *InterfacePtr, uint8_t RegisterAddress, uint8_t *Buffer, uint8_t Length)
+static int8_t ESP32_I2C_ReadReg(
+    void *InterfacePtr,
+    uint8_t RegisterAddress,
+    uint8_t *Buffer,
+    uint8_t Length)
 {
     if (InterfacePtr == NULL || Buffer == NULL)
     {
         return I2C_ESP32_NULL_PTR;
     }
-    I2C_ESP32_Config_t *Config = (I2C_ESP32_Config_t *)InterfacePtr;
+
+    I2C_ESP32_Config_t *Config =
+        (I2C_ESP32_Config_t *)InterfacePtr;
+
     if (Config->I2C_ESP32_DeviceHandle == NULL)
     {
         return I2C_ESP32_ERROR;
     }
-    esp_err_t err = i2c_master_transmit_receive(Config->I2C_ESP32_DeviceHandle, &RegisterAddress, 1, Buffer, Length, I2C_TIMEOUT_MS);
+
+    esp_err_t err = i2c_master_transmit_receive(
+        Config->I2C_ESP32_DeviceHandle,
+        &RegisterAddress,
+        1,
+        Buffer,
+        Length,
+        I2C_TIMEOUT_MS
+    );
+
     if (err != ESP_OK)
     {
+        printf(
+            "I2C READ ERROR: reg=0x%02X len=%u err=%s (0x%X)\n",
+            RegisterAddress,
+            Length,
+            esp_err_to_name(err),
+            (unsigned)err
+        );
+
         return I2C_ESP32_ERROR;
     }
+
     return I2C_ESP32_OK;
 }
 
-static int8_t ESP32_I2C_WriteReg(void *InterfacePtr, uint8_t RegisterAddress, uint8_t NewByte)
+static int8_t ESP32_I2C_WriteReg(
+    void *InterfacePtr,
+    uint8_t RegisterAddress,
+    uint8_t NewByte)
 {
     if (InterfacePtr == NULL)
     {
         return I2C_ESP32_NULL_PTR;
     }
-    I2C_ESP32_Config_t *Config = (I2C_ESP32_Config_t*)InterfacePtr;
+
+    I2C_ESP32_Config_t *Config =
+        (I2C_ESP32_Config_t *)InterfacePtr;
+
     if (Config->I2C_ESP32_DeviceHandle == NULL)
     {
         return I2C_ESP32_ERROR;
     }
-    uint8_t WriteBuffer[2] = {RegisterAddress, NewByte};
-    esp_err_t err = i2c_master_transmit(Config->I2C_ESP32_DeviceHandle, WriteBuffer, sizeof(WriteBuffer), I2C_TIMEOUT_MS);
-    if(err != ESP_OK)
+
+    uint8_t WriteBuffer[2] =
     {
+        RegisterAddress,
+        NewByte
+    };
+
+    esp_err_t err = i2c_master_transmit(
+        Config->I2C_ESP32_DeviceHandle,
+        WriteBuffer,
+        sizeof(WriteBuffer),
+        I2C_TIMEOUT_MS
+    );
+
+    if (err != ESP_OK)
+    {
+        printf(
+            "I2C WRITE ERROR: reg=0x%02X data=0x%02X err=%s (0x%X)\n",
+            RegisterAddress,
+            NewByte,
+            esp_err_to_name(err),
+            (unsigned)err
+        );
+
         return I2C_ESP32_ERROR;
     }
+
     return I2C_ESP32_OK;
 }
 

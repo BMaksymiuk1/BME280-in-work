@@ -43,6 +43,7 @@ typedef struct {
     float Humidity;
 }OutputData_t;
 
+//BME280 status enum
 typedef enum {
     BME280_OK = 0, 
     BME280_NULL_PTR = -1, // Null pointer error
@@ -54,12 +55,14 @@ typedef enum {
     BME280_CANNOT_COMPENSATE_WITHOUT_TEMPERATURE_MEASUREMENT = -7 // Cannot compensate pressure or humidity without a valid temperature measurement
 } BME280_Status_t;
 
+//Mode set enum
 typedef enum {
     BME280_SLEEP_MODE = 0,
     BME280_FORCED_MODE = 1,
     BME280_NORMAL_MODE = 3
 } BME280_Mode_t;
 
+//Oversampling set enum
 typedef enum {
     BME280_OSRS_SKIP = 0,
     BME280_OSRS_1X   = 1,
@@ -69,6 +72,7 @@ typedef enum {
     BME280_OSRS_16X  = 5
 } BME280_Oversampling_t;
 
+//Standby time set enum
 typedef enum {
     BME280_STANDBY_TIME_0_5_MS = 0,
     BME280_STANDBY_TIME_62_5_MS = 1,
@@ -95,7 +99,6 @@ typedef struct {
 } BME280_Device_t;
 
 
-
 BME280_Status_t TemperatureOversamplingSet(BME280_Device_t *Device, BME280_Oversampling_t osrs_t);
 BME280_Status_t PressureOversamplingSet(BME280_Device_t *Device, BME280_Oversampling_t osrs_p);
 BME280_Status_t ModeSet(BME280_Device_t *Device, BME280_Mode_t Mode);
@@ -110,9 +113,6 @@ BME280_Status_t IsMeasuring(BME280_Device_t *Device, uint8_t *IsMeasuringPtr);
 BME280_Status_t IsNVMCopying(BME280_Device_t *Device, uint8_t *IsCopyingPtr);
 BME280_Status_t GetMeasurements(BME280_Device_t *Device, OutputData_t *OutputDataPtr);
 BME280_Status_t BME280_Init(BME280_Device_t *Device);
-
-
-
 
 #endif //BME280LIB_BME280_H
 

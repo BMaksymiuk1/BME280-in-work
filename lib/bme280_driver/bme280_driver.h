@@ -1,14 +1,9 @@
 //
 // Created by barte on 7.09.2026.
 //
-
-
-
-
-
+//////////////////////////////////////////////    BME280 INTERFACE DRIVER    ///////////////////////////////////////////////////////
 #ifndef BME280LIB_BME280_DRIVER_H
 #define BME280LIB_BME280_DRIVER_H
-
 
 #include <stdint.h>
 
